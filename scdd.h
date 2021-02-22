@@ -11,6 +11,7 @@ corresponding to device driver
 */
 #ifndef SCDD_MAJOR
 #define SCDD_MAJOR 0 
+#endif
 
 /*
 minor by default 
@@ -18,7 +19,15 @@ corresponding to hardware device
 */
 #ifndef SCDD_MINOR
 #define SCDD_MINOR 0
+#endif
 
+
+/*
+* 定义简单字符设备的数量
+*/
+#ifndef SCDD_NR_DEVS
+#define SCDD_NR_DEVS 4
+#endif
 
 /*
 define the The unit size of the store unit
@@ -27,6 +36,7 @@ define the The unit size of the store unit
 */
 #ifndef SCDD_UNIT_SIZE
 #define SCDD_UNIT_SIZE 4096
+#endif
 
 
 /*
@@ -37,6 +47,7 @@ define the The unit size of the store unit
 */
 #ifndef SCDD_UNIT_NUM
 #define SCDD_UNIT_NUM 1000
+#endif
 
 
 /*
@@ -46,7 +57,7 @@ define the The unit size of the store unit
 struct scdd_data_set{
     void **data; // 连续的存储单元
     struct scdd_data_set *next;
-}
+};
 
 /*
 * 定义抽象设备
@@ -58,7 +69,7 @@ struct scdd_dev{
     int unit_size; // 每个数据存储区 存储单元的大小
     unsigned long size; // 实际存储数据的大小
     struct cdev cdev; // linux 字符设备结构体
-}
+};
 
 /*
 * prototypes for shared functions
@@ -77,4 +88,6 @@ ssize_t scdd_read(struct file *filp, char __user *buf, size_t count,
 ssize_t scdd_write(struct file *filp, const char __user *buf, size_t count, 
                 loff_t *f_pos);
 
-loff_t scdd_llseek(struct file *filp, loff_t off, in whence);
+loff_t scdd_llseek(struct file *filp, loff_t off, int whence);
+
+#endif // _SCDD_H_

@@ -88,6 +88,30 @@ static struct scdd_data_set *scdd_lookup_dset(struct scdd_dev *dev, int n){
 }
 
 
+static void print_data(struct scdd_dev *dev){
+    struct scdd_data_set *dset = dev->data;
+    int cur_size = 0, i, j;
+    while(dset && cur_size <= dev->size){
+        if(dset->data){
+            for(i = 0; i < dev->unit_num; i++){
+                if(dset->data[i]){
+                    char *ch = dset->data[i];
+                    for(j = 0; j < dev->unit_size; j++){
+                        printk(KERN_ALERT "%c__", *ch);
+                        ch += 1;
+                        cur_size += 1;
+                        if(cur_size > dev->size) goto out;
+                    }
+                }
+            }
+        }
+        else goto out;
+        dset = dset->next;
+    }
+    out:
+        printk(KERN_ALERT "\n");
+        return;
+}
 
 /*
 * implement fs interface
@@ -156,6 +180,7 @@ ssize_t scdd_read(struct file *filp, char __user *buf, size_t count,
     }
     *f_pos += count;
     retval = count;
+    printk(KERN_ALERT "read down#############\n");
 
     out:
         return retval;
@@ -212,6 +237,10 @@ ssize_t scdd_write(struct file *filp, const char __user *buf, size_t count,
     if(dev->size < *f_pos)
         dev->size = *f_pos;
 
+    // 写完之后，输出所有数据用于debug
+    printk(KERN_ALERT "write_down#############\n");
+    print_data(dev);
+    printk(KERN_ALERT "write_print_down#############\n");
     out:
         return retval;
 }

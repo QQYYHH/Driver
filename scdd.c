@@ -73,16 +73,25 @@ static int scdd_trim(struct scdd_dev *dev){
 * 如果没有分配，动态分配
 */
 static struct scdd_data_set *scdd_lookup_dset(struct scdd_dev *dev, int n){
-    struct scdd_data_set *dset = dev->data;
-    n++;
+    struct scdd_data_set *dset = dev->data, *pre;
+    if(NULL == dset){ // first dset is not allocated
+        dset = dev->data = kmalloc(sizeof(struct scdd_data_set), GFP_KERNEL);
+        if(NULL == dset) goto FAIL;
+        memset(dset, 0, sizeof(struct scdd_data_set));
+    }
+    pre = dset;
+    dset = dset->next;
     while(n--){
         if(NULL == dset){
             dset = kmalloc(sizeof(struct scdd_data_set), GFP_KERNEL);
             if(NULL == dset) goto FAIL;
             memset(dset, 0, sizeof(struct scdd_data_set));
+            pre->next = dset;
         }
+        pre = dset;
+        dset = dset->next;
     }
-    return dset;
+    return pre;
     FAIL:
         return NULL;
 }
@@ -109,7 +118,6 @@ static void print_data(struct scdd_dev *dev){
         dset = dset->next;
     }
     out:
-        printk(KERN_ALERT "\n");
         return;
 }
 
@@ -166,6 +174,17 @@ ssize_t scdd_read(struct file *filp, char __user *buf, size_t count,
     int dset_i = res / unit_size, dset_off = res % unit_size;
     dset = scdd_lookup_dset(dev, n);
     if( !dset || !dset->data || !dset->data[dset_i]){
+        // 调试信息
+        /*if(dset){
+            printk(KERN_ALERT "#### dset: %p ####", dset);
+            if(dset->data){
+                printk(KERN_ALERT "#### dset->data: %p ####", dset->data);
+                if(dset->data[dset_i]){
+                    printk(KERN_ALERT "#### dset->data[dset_i]: %p ####", dset->data[dset_i]);
+                }
+            }
+        }
+        else printk(KERN_ALERT "dset, dset->data, dset->data[dset_i] is NULL");*/
         retval = -ENOENT;
         goto out;
     }
@@ -180,7 +199,7 @@ ssize_t scdd_read(struct file *filp, char __user *buf, size_t count,
     }
     *f_pos += count;
     retval = count;
-    printk(KERN_ALERT "read down#############\n");
+    //printk(KERN_ALERT "read down#############\n");
 
     out:
         return retval;
@@ -207,13 +226,14 @@ ssize_t scdd_write(struct file *filp, const char __user *buf, size_t count,
     int res = (long)*f_pos % itemsize;
     int dset_i = res / unit_size, dset_off = res % unit_size;
     dset = scdd_lookup_dset(dev, n);
+    // printk(KERN_ALERT "dset address is %p", dset);
     if(NULL == dset)
         goto out;
     if(!dset->data){
         dset->data = kmalloc(unit_num * sizeof(void *), GFP_KERNEL);
         if(!dset->data)
             goto out;
-        memset(dset->data, 0, sizeof(dset->data));
+        memset(dset->data, 0, unit_num * sizeof(void *));
     }
     if(!dset->data[dset_i]){
         dset->data[dset_i] = kmalloc(unit_size, GFP_KERNEL);
@@ -238,9 +258,10 @@ ssize_t scdd_write(struct file *filp, const char __user *buf, size_t count,
         dev->size = *f_pos;
 
     // 写完之后，输出所有数据用于debug
-    printk(KERN_ALERT "write_down#############\n");
+    /*printk(KERN_ALERT "after write data size is %d", dev->size);
+    printk(KERN_ALERT "dset address is %p", dev->data);
     print_data(dev);
-    printk(KERN_ALERT "write_print_down#############\n");
+    printk(KERN_ALERT "write_print_down#############");*/
     out:
         return retval;
 }
@@ -311,6 +332,7 @@ static void scdd_setup_cdev(struct scdd_dev *dev, int index){
 }
 
 int scdd_init_module(void){
+    printk(KERN_ALERT "HELLO WORLD!!!");
     int res, i;
     dev_t dev = 0;
 
